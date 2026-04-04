@@ -1,0 +1,11 @@
+{
+  "name": "Breizh Report",
+  "short_name": "Breizh",
+  "start_url": "/breizh-report/",
+  "display": "standalone",
+  "icons": [{
+    "src": "logo.png",
+    "sizes": "512x512",
+    "type": "image/png"
+  }]
+}
