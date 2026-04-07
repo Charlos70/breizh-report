@@ -6,9 +6,6 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#f2f2f7">
-  <link rel="icon" type="image/png" href="logo.png">
-<link rel="apple-touch-icon" href="logo.png">
-<link rel="manifest" href="manifest.json">
 <title>Breizh Report</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -561,7 +558,7 @@ function del(){
 function row(i){
   const icon=ICONS[i.type]||ICONS['Autres'];
   const h=i.arr&&i.dep?`${i.arr} – ${i.dep}`:'Heures non saisies';
-  const date=new Date(i.date+'T00:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
+  const dp=i.date.split('-').map(Number); const date=new Date(dp[0],dp[1]-1,dp[2]).toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
   return`<div class="ios-row" onclick="openModal('${i.id}')">
     <div class="row-icon-wrap">${icon}</div>
     <div class="row-body">
@@ -593,7 +590,7 @@ function renderHistory(){
   const grp={};
   data.forEach(i=>{if(!grp[i.date])grp[i.date]=[];grp[i.date].push(i);});
   wrap.innerHTML=Object.keys(grp).sort((a,b)=>b.localeCompare(a)).map(d=>{
-    const dd=new Date(d+'T00:00:00');
+    const parts=d.split('-').map(Number); const dd=new Date(parts[0],parts[1]-1,parts[2]);
     const lbl=dd.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
     return`<div class="sec-title hist-date">${lbl}</div><div class="ios-card">${grp[d].map(i=>row(i)).join('')}</div>`;
   }).join('');
@@ -636,7 +633,12 @@ function getWeekBounds(offset) {
   return { monday, sunday };
 }
 
-function dateStr(d) { return d.toISOString().split('T')[0]; }
+function dateStr(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+day;
+}
 
 function renderWeek() {
   const { monday, sunday } = getWeekBounds(curWeekOffset);
@@ -646,7 +648,8 @@ function renderWeek() {
 
   const list = data.filter(i => {
     if (!i.date) return false;
-    const d = new Date(i.date + 'T00:00:00');
+    const parts = i.date.split('-').map(Number);
+    const d = new Date(parts[0], parts[1]-1, parts[2]);
     return d >= monday && d <= sunday;
   });
 
@@ -727,7 +730,8 @@ function exportCSV() {
   const { monday, sunday } = getWeekBounds(curWeekOffset);
   const list = data.filter(i => {
     if (!i.date) return false;
-    const d = new Date(i.date + 'T00:00:00');
+    const parts = i.date.split('-').map(Number);
+    const d = new Date(parts[0], parts[1]-1, parts[2]);
     return d >= monday && d <= sunday;
   });
   if (!list.length) { alert('Aucune intervention cette semaine.'); return; }
