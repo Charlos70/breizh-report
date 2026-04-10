@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f2f2f7">
+<title>Breizh Report</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+:root {
+  --bg: #eef0f4; --card: #f8f9fb; --sep: rgba(60,60,67,0.1);
+  --blue: #007aff; --blue-light: rgba(0,122,255,0.09);
+  --gray: #8e8e93; --gray2: #aeaeb2; --gray3: #c7c7cc;
+  --fill: rgba(120,120,128,0.1); --fill2: rgba(120,120,128,0.05);
+  --label: #1a1a1e; --label2: rgba(60,60,67,0.58); --label3: rgba(60,60,67,0.28);
+  --red: #ff3b30; --green: #34c759; --orange: #ff9500;
+  --sf: -apple-system,'SF Pro Display','Helvetica Neue',sans-serif;
+  --r: 16px; --r-sm: 12px; --r-icon: 10px;
+}
+body { font-family: var(--sf); background: var(--bg); color: var(--label); max-width: 430px; margin: 0 auto; min-height: 100vh; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+.screen { display: none; padding-bottom: 88px; min-height: 100vh; }
+.screen.active { display: block; }
+
+/* NAV */
+.nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 430px; background: rgba(238,240,244,0.96); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 0.5px solid var(--sep); display: flex; justify-content: space-around; padding: 8px 0 26px; z-index: 100; }
+.nav-btn { display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: none; color: var(--gray2); cursor: pointer; font-family: var(--sf); font-size: 10px; font-weight: 500; padding: 0 20px; transition: color 0.15s; }
+.nav-btn.active { color: var(--blue); }
+.nav-btn svg { width: 26px; height: 26px; }
+
+/* FAB */
+.fab { position: fixed; bottom: 94px; right: calc(50% - 215px + 20px); width: 54px; height: 54px; border-radius: 50%; background: var(--blue); border: none; color: white; cursor: pointer; z-index: 99; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(0,122,255,0.4); transition: transform 0.12s; }
+.fab:active { transform: scale(0.92); }
+.fab svg { width: 28px; height: 28px; }
+
+/* HEADER */
+.page-header { padding: 60px 20px 16px; }
+.page-title { font-size: 34px; font-weight: 700; letter-spacing: 0.37px; }
+
+/* SUMMARY GRID */
+.sum-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 20px 4px; }
+.sum-card { background: var(--card); border-radius: var(--r); padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.sum-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.sum-icon { width: 34px; height: 34px; border-radius: var(--r-icon); background: var(--blue-light); display: flex; align-items: center; justify-content: center; }
+.sum-icon svg { width: 18px; height: 18px; color: var(--blue); stroke: var(--blue); }
+.sum-val { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; line-height: 1; }
+.sum-lbl { font-size: 12px; color: var(--label2); margin-top: 3px; }
+
+/* SECTION */
+.sec-wrap { padding: 0 20px; margin-top: 24px; }
+.sec-title { font-size: 13px; font-weight: 600; color: var(--label2); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 8px; padding: 0 4px; }
+.ios-card { background: var(--card); border-radius: var(--r); overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+
+/* ROWS */
+.ios-row { display: flex; align-items: center; gap: 14px; padding: 13px 16px; border-bottom: 0.5px solid var(--sep); cursor: pointer; transition: background 0.1s; min-height: 58px; }
+.ios-row:last-child { border-bottom: none; }
+.ios-row:active { background: var(--fill); }
+.row-icon-wrap { width: 38px; height: 38px; border-radius: 10px; background: var(--blue-light); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.row-icon-wrap svg { width: 20px; height: 20px; stroke: var(--blue); }
+.row-icon-wrap.gray { background: var(--fill); }
+.row-icon-wrap.gray svg { stroke: var(--gray); }
+.row-body { flex: 1; min-width: 0; }
+.row-title { font-size: 16px; font-weight: 400; letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-sub { font-size: 13px; color: var(--label2); margin-top: 2px; }
+.row-end { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+.row-dur { font-size: 16px; color: var(--blue); font-weight: 500; }
+.chevron { color: var(--gray3); }
+.chevron svg { width: 14px; height: 14px; }
+
+/* EMPTY */
+.empty { display: flex; flex-direction: column; align-items: center; padding: 48px 24px; gap: 12px; }
+.empty-icon-wrap { width: 64px; height: 64px; border-radius: 18px; background: var(--fill); display: flex; align-items: center; justify-content: center; }
+.empty-icon-wrap svg { width: 32px; height: 32px; stroke: var(--gray2); }
+.empty p { font-size: 15px; color: var(--label2); text-align: center; line-height: 1.5; }
+
+/* RECAP */
+.month-nav { display: flex; align-items: center; justify-content: space-between; padding: 0 20px 16px; }
+.month-btn { width: 34px; height: 34px; border-radius: 50%; background: var(--fill); border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.month-btn svg { width: 18px; height: 18px; stroke: var(--blue); }
+.month-name { font-size: 20px; font-weight: 600; letter-spacing: -0.4px; }
+.kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 20px; }
+.kpi-card { background: var(--card); border-radius: var(--r); padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.kpi-val { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+.kpi-lbl { font-size: 12px; color: var(--label2); margin-top: 3px; }
+
+/* MODAL */
+.modal-overlay { display: none; position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.35); align-items: flex-end; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--bg); border-radius: 14px 14px 0 0; width: 100%; max-width: 430px; max-height: 95vh; overflow-y: auto; animation: up 0.3s cubic-bezier(0.32,0.72,0,1); }
+@keyframes up { from { transform: translateY(100%); } }
+.modal-grip { display: flex; justify-content: center; padding: 10px 0 4px; }
+.modal-grip-bar { width: 36px; height: 5px; background: var(--gray3); border-radius: 3px; }
+.modal-top { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px 14px; border-bottom: 0.5px solid var(--sep); background: var(--card); }
+.modal-action { font-size: 17px; color: var(--blue); cursor: pointer; font-weight: 400; background: none; border: none; font-family: var(--sf); }
+.modal-action.bold { font-weight: 600; }
+.modal-heading { font-size: 17px; font-weight: 600; }
+
+/* FORM */
+.f-sec { padding: 0 20px; }
+.f-sec-title { font-size: 13px; font-weight: 600; color: var(--label2); text-transform: uppercase; letter-spacing: 0.4px; padding: 20px 4px 8px; }
+.f-card { background: var(--card); border-radius: var(--r); overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.f-row { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-bottom: 0.5px solid var(--sep); min-height: 50px; }
+.f-row:last-child { border-bottom: none; }
+.f-row-icon { width: 30px; height: 30px; border-radius: 8px; background: var(--blue-light); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.f-row-icon svg { width: 16px; height: 16px; stroke: var(--blue); }
+.f-lbl { font-size: 16px; white-space: nowrap; }
+.f-input { background: none; border: none; outline: none; font-family: var(--sf); font-size: 16px; color: var(--label2); text-align: right; flex: 1; min-width: 0; appearance: none; -webkit-appearance: none; }
+.f-select { background: none; border: none; outline: none; font-family: var(--sf); font-size: 15px; color: var(--blue); text-align: right; flex: 1; appearance: none; -webkit-appearance: none; cursor: pointer; }
+.f-textarea { width: 100%; background: none; border: none; outline: none; font-family: var(--sf); font-size: 16px; color: var(--label); resize: none; padding: 13px 16px; min-height: 80px; }
+
+/* CALC */
+.calc-wrap { padding: 0 20px; display: flex; flex-direction: column; gap: 8px; margin-top: 2px; }
+.calc-row { display: flex; align-items: center; justify-content: space-between; background: var(--card); border-radius: var(--r-sm); padding: 13px 16px; }
+.calc-row.total { background: var(--blue); }
+.calc-icon { display: flex; align-items: center; gap: 8px; }
+.calc-icon svg { width: 18px; height: 18px; }
+.calc-lbl { font-size: 15px; color: var(--label2); }
+.calc-row.total .calc-lbl { color: rgba(255,255,255,0.7); }
+.calc-val { font-size: 17px; font-weight: 600; color: var(--blue); }
+.calc-row.total .calc-val { color: white; }
+
+/* BTNS */
+.btn-wrap { padding: 12px 20px 0; display: flex; flex-direction: column; gap: 10px; padding-bottom: 16px; }
+.btn { width: 100%; padding: 16px; border-radius: var(--r); border: none; font-family: var(--sf); font-size: 17px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.btn svg { width: 20px; height: 20px; }
+.btn.primary { background: var(--blue); color: white; }
+.btn.secondary { background: var(--fill); color: var(--label); font-weight: 400; }
+.btn.danger { background: rgba(255,59,48,0.1); color: var(--red); font-weight: 400; }
+.btn:active { opacity: 0.8; }
+
+/* HISTORY date label */
+.hist-date { font-size: 13px; font-weight: 600; color: var(--label2); text-transform: uppercase; letter-spacing: 0.4px; padding: 20px 4px 8px; }
+</style>
+</head>
+<body>
+
+<!-- ACCUEIL -->
+<div class="screen active" id="screen-home">
+  <div class="page-header">
+    <div style="font-size:12px;font-weight:600;color:var(--gray);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:4px" id="greeting-label">Bonjour</div>
+    <div class="page-title" id="greeting-date" style="font-size:30px">—</div>
+  </div>
+  <div class="sum-grid">
+    <div class="sum-card">
+      <div class="sum-card-top">
+        <div class="sum-icon">
+          <svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        </div>
+      </div>
+      <div class="sum-val" id="s-nb">0</div>
+      <div class="sum-lbl">Missions aujourd'hui</div>
+    </div>
+    <div class="sum-card">
+      <div class="sum-card-top">
+        <div class="sum-icon">
+          <svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-linecap="round"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2"/></svg>
+        </div>
+      </div>
+      <div class="sum-val" id="s-act">—</div>
+      <div class="sum-lbl">Activité</div>
+    </div>
+    <div class="sum-card">
+      <div class="sum-card-top">
+        <div class="sum-icon">
+          <svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l2.5 0M13 16l2.5 0M13 16H9M3 16h2M17 16h2V9.5L13 6"/></svg>
+        </div>
+      </div>
+      <div class="sum-val" id="s-traj">—</div>
+      <div class="sum-lbl">Trajet</div>
+    </div>
+    <div class="sum-card">
+      <div class="sum-card-top">
+        <div class="sum-icon">
+          <svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        </div>
+      </div>
+      <div class="sum-val" id="s-tot">—</div>
+      <div class="sum-lbl">Total</div>
+    </div>
+  </div>
+  <div class="sec-wrap">
+    <div class="sec-title">Interventions du jour</div>
+    <div class="ios-card" id="list-today">
+      <div class="empty">
+        <div class="empty-icon-wrap"><svg fill="none" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div>
+        <p>Aucune intervention aujourd'hui.<br>Appuyez sur + pour commencer.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORIQUE -->
+<div class="screen" id="screen-history">
+  <div class="page-header"><div class="page-title">Historique</div></div>
+  <div class="sec-wrap" id="list-all-wrap">
+    <div class="ios-card">
+      <div class="empty">
+        <div class="empty-icon-wrap"><svg fill="none" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+        <p>Aucune intervention enregistrée.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RÉCAP -->
+<div class="screen" id="screen-recap">
+  <div class="page-header"><div class="page-title">Récapitulatif</div></div>
+  <div class="month-nav">
+    <button class="month-btn" onclick="changeMonth(-1)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg></button>
+    <div class="month-name" id="month-label">—</div>
+    <button class="month-btn" onclick="changeMonth(1)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
+  </div>
+  <div class="kpi-grid">
+    <div class="kpi-card"><div class="kpi-val" id="k-nb">0</div><div class="kpi-lbl">Missions</div></div>
+    <div class="kpi-card"><div class="kpi-val" id="k-act">—</div><div class="kpi-lbl">Activité</div></div>
+    <div class="kpi-card"><div class="kpi-val" id="k-traj">—</div><div class="kpi-lbl">Trajet</div></div>
+    <div class="kpi-card"><div class="kpi-val" id="k-tot">—</div><div class="kpi-lbl">Total</div></div>
+  </div>
+  <div class="sec-wrap" style="margin-top:24px">
+    <div class="sec-title">Par type</div>
+    <div class="ios-card" id="recap-rows">
+      <div class="empty">
+        <div class="empty-icon-wrap"><svg fill="none" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div>
+        <p>Aucune donnée ce mois.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FAB -->
+<button class="fab" onclick="openModal()">
+  <svg fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+</button>
+
+<!-- NAV -->
+<nav class="nav">
+  <button class="nav-btn active" id="nav-home" onclick="showScreen('home')">
+    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+    Accueil
+  </button>
+  <button class="nav-btn" id="nav-history" onclick="showScreen('history')">
+    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    Historique
+  </button>
+  <button class="nav-btn" id="nav-week" onclick="showScreen('week')">
+    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" stroke-linecap="round"/><path stroke-linecap="round" d="M16 2v4M8 2v4M3 10h18"/></svg>
+    Semaine
+  </button>
+  <button class="nav-btn" id="nav-recap" onclick="showScreen('recap')">
+    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+    Récap
+  </button>
+</nav>
+
+<!-- SEMAINE -->
+<div class="screen" id="screen-week">
+  <div class="page-header"><div class="page-title">Semaine</div></div>
+  <div class="month-nav">
+    <button class="month-btn" onclick="changeWeek(-1)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg></button>
+    <div class="month-name" id="week-label">—</div>
+    <button class="month-btn" onclick="changeWeek(1)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
+  </div>
+  <div class="kpi-grid">
+    <div class="kpi-card"><div class="kpi-val" id="w-nb">0</div><div class="kpi-lbl">Missions</div></div>
+    <div class="kpi-card"><div class="kpi-val" id="w-act">—</div><div class="kpi-lbl">Activité</div></div>
+    <div class="kpi-card"><div class="kpi-val" id="w-traj">—</div><div class="kpi-lbl">Trajet</div></div>
+    <div class="kpi-card"><div class="kpi-val" id="w-tot">—</div><div class="kpi-lbl">Total</div></div>
+  </div>
+  <div class="sec-wrap" style="margin-top:20px">
+    <div class="sec-title">Détail par jour</div>
+    <div id="week-days"></div>
+  </div>
+  <div class="sec-wrap" style="margin-top:8px">
+    <div class="sec-title">Par type</div>
+    <div class="ios-card" id="week-types"></div>
+  </div>
+  <div style="padding:16px 20px 0">
+    <button class="btn primary" onclick="sendMail('week')">
+      <svg fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+      Envoyer la semaine par mail
+    </button>
+    <button class="btn secondary" style="margin-top:10px" onclick="sendMail('all')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+      Envoyer tout l'historique par mail
+    </button>
+    <button class="btn secondary" style="margin-top:10px" onclick="exportCSV()">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+      Télécharger CSV (Excel)
+    </button>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeOutside(event)">
+  <div class="modal">
+    <div class="modal-grip"><div class="modal-grip-bar"></div></div>
+    <div class="modal-top">
+      <button class="modal-action" onclick="closeModal()">Annuler</button>
+      <span class="modal-heading" id="modal-title">Nouvelle intervention</span>
+      <button class="modal-action bold" onclick="save()">Enregistrer</button>
+    </div>
+
+    <div class="f-sec">
+      <div class="f-sec-title">Informations</div>
+      <div class="f-card">
+        <div class="f-row">
+          <div class="f-row-icon"><svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" stroke-linecap="round"/><path stroke-linecap="round" d="M16 2v4M8 2v4M3 10h18"/></svg></div>
+          <span class="f-lbl">Date</span>
+          <input type="date" class="f-input" id="f-date">
+        </div>
+        <div class="f-row">
+          <div class="f-row-icon"><svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div>
+          <span class="f-lbl">Type</span>
+          <select class="f-select" id="f-type">
+            <option value="">Choisir...</option>
+            <option>Intervention résidence senior Senghor</option>
+            <option>Intervention résidence senior Amelys</option>
+            <option>État des lieux de sortie</option>
+            <option>Intervention gestion locative</option>
+            <option>Intervention syndic Cabinet Lefeuvre</option>
+            <option>Intervention &amp; entretien Les Marsauderies</option>
+            <option>Intervention bricolage 4h Les Marsauderies</option>
+            <option>Intervention &amp; entretien résidence Néo</option>
+            <option>Ronde technique résidence Néo</option>
+            <option>Réalisation de devis</option>
+            <option>Achat fourniture / récupération commandes</option>
+            <option>Administratif</option>
+            <option>Intervention SG Cabinet Lefeuvre</option>
+            <option>Réunion</option>
+            <option>Déchèterie</option>
+            <option>Autres</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="f-sec-title">Horaires</div>
+      <div class="f-card">
+        <div class="f-row">
+          <div class="f-row-icon"><svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 6v6l4 2"/></svg></div>
+          <span class="f-lbl">Arrivée</span>
+          <input type="time" class="f-input" id="f-arr" oninput="calc()">
+        </div>
+        <div class="f-row">
+          <div class="f-row-icon"><svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 6v6l-4 2"/></svg></div>
+          <span class="f-lbl">Départ</span>
+          <input type="time" class="f-input" id="f-dep" oninput="calc()">
+        </div>
+      </div>
+    </div>
+
+    <div class="calc-wrap" style="margin-top:12px">
+      <div class="calc-row">
+        <div class="calc-icon">
+          <svg fill="none" stroke="var(--blue)" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 6v6l4 2"/></svg>
+          <span class="calc-lbl">Temps d'activité</span>
+        </div>
+        <span class="calc-val" id="c-act">—</span>
+      </div>
+    </div>
+
+    <div class="f-sec">
+      <div class="f-sec-title">Trajet</div>
+      <div class="f-card">
+        <div class="f-row">
+          <div class="f-row-icon"><svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l2.5 0M13 16l2.5 0M13 16H9M3 16h2M17 16h2V9.5L13 6"/></svg></div>
+          <span class="f-lbl">Mode</span>
+          <select class="f-select" id="f-mode" onchange="toggleTrajet()">
+            <option value="">Sans trajet</option>
+            <option value="manuel">Saisie manuelle</option>
+            <option value="auto">Calculé auto</option>
+          </select>
+        </div>
+        <div id="z-manuel" style="display:none">
+          <div class="f-row">
+            <div class="f-row-icon"><svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></div>
+            <span class="f-lbl">Durée (min)</span>
+            <input type="number" class="f-input" id="f-tmin" placeholder="30" oninput="calc()">
+          </div>
+        </div>
+        <div id="z-auto" style="display:none">
+          <div class="f-row">
+            <div class="f-row-icon"><svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div>
+            <span class="f-lbl">Départ domicile</span>
+            <input type="time" class="f-input" id="f-dd" oninput="calc()">
+          </div>
+          <div class="f-row">
+            <div class="f-row-icon"><svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg></div>
+            <span class="f-lbl">Retour domicile</span>
+            <input type="time" class="f-input" id="f-rd" oninput="calc()">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="calc-wrap" style="margin-top:12px">
+      <div class="calc-row">
+        <div class="calc-icon">
+          <svg fill="none" stroke="var(--blue)" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l2.5 0M13 16l2.5 0M13 16H9M3 16h2M17 16h2V9.5L13 6"/></svg>
+          <span class="calc-lbl">Trajet</span>
+        </div>
+        <span class="calc-val" id="c-traj">—</span>
+      </div>
+      <div class="calc-row total">
+        <div class="calc-icon">
+          <svg fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          <span class="calc-lbl">Temps total</span>
+        </div>
+        <span class="calc-val" id="c-tot">—</span>
+      </div>
+    </div>
+
+    <div class="f-sec">
+      <div class="f-sec-title">Notes</div>
+      <div class="f-card">
+        <textarea class="f-textarea" id="f-notes" placeholder="Remarques optionnelles..."></textarea>
+      </div>
+    </div>
+
+    <div class="btn-wrap">
+      <button class="btn primary" onclick="save()">
+        <svg fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+        Enregistrer
+      </button>
+      <button class="btn secondary" onclick="closeModal()">Annuler</button>
+      <button class="btn danger" id="btn-del" style="display:none" onclick="del()">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+        Supprimer
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+const ICONS = {
+  'Intervention résidence senior Senghor': `<svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>`,
+  'Intervention résidence senior Amelys': `<svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>`,
+  'État des lieux de sortie': `<svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>`,
+  'Intervention gestion locative': `<svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>`,
+  'Intervention syndic Cabinet Lefeuvre': `<svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>`,
+  'Intervention & entretien Les Marsauderies': `<svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>`,
+  'Intervention bricolage 4h Les Marsauderies': `<svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>`,
+  'Intervention & entretien résidence Néo': `<svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>`,
+  'Ronde technique résidence Néo': `<svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>`,
+  'Réalisation de devis': `<svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>`,
+  'Achat fourniture / récupération commandes': `<svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>`,
+  'Administratif': `<svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>`,
+  'Intervention SG Cabinet Lefeuvre': `<svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>`,
+  'Réunion': `<svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>`,
+  'Déchèterie': `<svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>`,
+  'Autres': `<svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"/></svg>`,
+};
+
+const MONTHS=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+let data=JSON.parse(localStorage.getItem('iv4')||'[]');
+let editId=null, curM=new Date().getMonth(), curY=new Date().getFullYear();
+
+const t2m=t=>{if(!t)return null;const[h,m]=t.split(':').map(Number);return h*60+m;};
+const m2h=m=>{if(!m||m<=0)return'—';const h=Math.floor(m/60),mn=m%60;return h>0?`${h}h${mn>0?String(mn).padStart(2,'0'):''}` :`${mn}min`;};
+const g=id=>document.getElementById(id);
+
+
+
+// ── EMAIL EXPORT ──
+const MAIL_TO = 'ccavalheiro@breizhfacilities.fr';
+
+function formatMailBody(rows) {
+  const lines = ['Date;Type;Arrivée;Départ;Activité (min);Trajet (min);Total (min);Notes'];
+  rows.forEach(i => {
+    lines.push([
+      i.date, i.type,
+      i.arr||'', i.dep||'',
+      i.act||0, i.traj||0, i.total||0,
+      (i.notes||'').replace(/;/g,',')
+    ].join(';'));
+  });
+  return lines.join('\n');
+}
+
+function mailWeek() {
+  const { monday, sunday } = getWeekBounds(curWeekOffset);
+  const list = data.filter(i => {
+    if (!i.date) return false;
+    const parts = i.date.split('-').map(Number);
+    const d = new Date(parts[0], parts[1]-1, parts[2]);
+    return d >= monday && d <= sunday;
+  });
+  if (!list.length) { alert('Aucune intervention cette semaine.'); return; }
+  const m1 = monday.toLocaleDateString('fr-FR', {day:'numeric',month:'long'});
+  const m2 = sunday.toLocaleDateString('fr-FR', {day:'numeric',month:'long'});
+  const subject = encodeURIComponent('Breizh Report — Semaine du ' + m1 + ' au ' + m2);
+  const body = encodeURIComponent(
+    'Bonjour,\n\nVeuillez trouver ci-dessous le récapitulatif de la semaine du ' + m1 + ' au ' + m2 + '.\n\n' +
+    formatMailBody(list.sort((a,b)=>a.date.localeCompare(b.date)||(a.arr||'').localeCompare(b.arr||''))) +
+    '\n\nCordialement,\nBreizh Report'
+  );
+  window.location.href = 'mailto:' + MAIL_TO + '?subject=' + subject + '&body=' + body;
+}
+
+function mailAll() {
+  if (!data.length) { alert('Aucune intervention enregistrée.'); return; }
+  const sorted = [...data].sort((a,b)=>a.date.localeCompare(b.date)||(a.arr||'').localeCompare(b.arr||''));
+  const subject = encodeURIComponent('Breizh Report — Historique complet');
+  const body = encodeURIComponent(
+    'Bonjour,\n\nVeuillez trouver ci-dessous l\'historique complet des interventions.\n\n' +
+    formatMailBody(sorted) +
+    '\n\nCordialement,\nBreizh Report'
+  );
+  window.location.href = 'mailto:' + MAIL_TO + '?subject=' + subject + '&body=' + body;
+}
+
+function setGreeting() {
+  const now = new Date();
+  const h = now.getHours();
+  let greet = h < 12 ? 'Bonjour' : h < 18 ? 'Bon après-midi' : 'Bonsoir';
+  const days = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+  const months = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  const dateStr = `${days[now.getDay()]} ${now.getDate()} ${months[now.getMonth()]}`;
+  const gl = document.getElementById('greeting-label');
+  const gd = document.getElementById('greeting-date');
+  if (gl) gl.textContent = greet;
+  if (gd) gd.textContent = dateStr;
+}
+
+const MAIL_TO = 'ccavalheiro@breizhfacilities.fr';
+
+function buildMailBody(rows, title) {
+  const DAYS_FR = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+  let body = title + '\n';
+  body += '='.repeat(50) + '\n\n';
+  
+  // Group by date
+  const grp = {};
+  rows.forEach(i => { if(!grp[i.date]) grp[i.date]=[]; grp[i.date].push(i); });
+  
+  let totalAct = 0, totalTraj = 0, nbTotal = 0;
+  
+  Object.keys(grp).sort((a,b)=>a.localeCompare(b)).forEach(d => {
+    const dd = d.split('-').map(Number);
+    const date = new Date(dd[0], dd[1]-1, dd[2]);
+    const dayName = DAYS_FR[date.getDay()];
+    const dateLabel = date.toLocaleDateString('fr-FR', {day:'numeric', month:'long', year:'numeric'});
+    body += dayName + ' ' + dateLabel + '\n';
+    body += '-'.repeat(40) + '\n';
+    
+    const dayList = grp[d].sort((a,b)=>(a.arr||'').localeCompare(b.arr||''));
+    dayList.forEach(i => {
+      const h = i.arr && i.dep ? i.arr + ' - ' + i.dep : 'Heures non saisies';
+      const act = m2h(i.act);
+      const traj = i.traj > 0 ? ' | Trajet: ' + m2h(i.traj) : '';
+      body += '• ' + i.type + '\n';
+      body += '  ' + h + ' | Activité: ' + act + traj + '\n';
+      if(i.notes) body += '  Note: ' + i.notes + '\n';
+      totalAct += i.act || 0;
+      totalTraj += i.traj || 0;
+      nbTotal++;
+    });
+    body += '\n';
+  });
+  
+  body += '='.repeat(50) + '\n';
+  body += 'TOTAL : ' + nbTotal + ' intervention(s)\n';
+  body += 'Temps activité : ' + m2h(totalAct) + '\n';
+  body += 'Temps trajet : ' + m2h(totalTraj) + '\n';
+  body += 'Temps total : ' + m2h(totalAct + totalTraj) + '\n';
+  body += '\nBreizh Report - Suivi des interventions';
+  return body;
+}
+
+function mailWeek() {
+  const { monday, sunday } = getWeekBounds(curWeekOffset);
+  const list = data.filter(i => {
+    if (!i.date) return false;
+    const parts = i.date.split('-').map(Number);
+    const d = new Date(parts[0], parts[1]-1, parts[2]);
+    return d >= monday && d <= sunday;
+  });
+  if (!list.length) { alert('Aucune intervention cette semaine.'); return; }
+  
+  const m1 = monday.toLocaleDateString('fr-FR', {day:'numeric', month:'long'});
+  const m2 = sunday.toLocaleDateString('fr-FR', {day:'numeric', month:'long', year:'numeric'});
+  const subject = 'Rapport semaine ' + m1 + ' - ' + m2;
+  const body = buildMailBody(list, 'RAPPORT SEMAINE DU ' + m1.toUpperCase() + ' AU ' + m2.toUpperCase());
+  
+  window.location.href = 'mailto:' + MAIL_TO + 
+    '?subject=' + encodeURIComponent(subject) + 
+    '&body=' + encodeURIComponent(body);
+}
+
+function mailAll() {
+  if (!data.length) { alert('Aucune intervention enregistrée.'); return; }
+  const subject = 'Historique complet - Breizh Report';
+  const body = buildMailBody([...data], 'HISTORIQUE COMPLET DES INTERVENTIONS');
+  window.location.href = 'mailto:' + MAIL_TO + 
+    '?subject=' + encodeURIComponent(subject) + 
+    '&body=' + encodeURIComponent(body);
+}
+
+
+// ── EMAIL EXPORT ──
+const MAIL_TO = 'ccavalheiro@breizhfacilities.fr';
+
+function formatMailBody(rows, title) {
+  let body = title + '\n';
+  body += '='.repeat(40) + '\n\n';
+  
+  // Group by date
+  const grp = {};
+  rows.forEach(i => {
+    if (!grp[i.date]) grp[i.date] = [];
+    grp[i.date].push(i);
+  });
+  
+  let totalAct = 0, totalTraj = 0, totalNb = 0;
+  
+  Object.keys(grp).sort((a,b)=>a.localeCompare(b)).forEach(d => {
+    const parts = d.split('-').map(Number);
+    const dd = new Date(parts[0], parts[1]-1, parts[2]);
+    const label = dd.toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'});
+    body += label.toUpperCase() + '\n';
+    body += '-'.repeat(30) + '\n';
+    grp[d].sort((a,b)=>(a.arr||'').localeCompare(b.arr||'')).forEach(i => {
+      const h = i.arr && i.dep ? i.arr+' - '+i.dep : 'Heures non saisies';
+      body += '• ' + i.type + '\n';
+      body += '  Horaires : ' + h + '\n';
+      body += '  Activité : ' + m2h(i.act) + (i.traj>0 ? ' | Trajet : '+m2h(i.traj) : '') + '\n';
+      if (i.notes) body += '  Notes : ' + i.notes + '\n';
+      body += '\n';
+      totalAct += i.act || 0;
+      totalTraj += i.traj || 0;
+      totalNb++;
+    });
+  });
+  
+  body += '='.repeat(40) + '\n';
+  body += 'TOTAL : ' + totalNb + ' intervention(s)\n';
+  body += 'Temps activité : ' + m2h(totalAct) + '\n';
+  body += 'Temps trajet : ' + m2h(totalTraj) + '\n';
+  body += 'Temps total : ' + m2h(totalAct + totalTraj) + '\n\n';
+  body += 'Envoyé depuis Breizh Report';
+  return body;
+}
+
+function mailWeek() {
+  const { monday, sunday } = getWeekBounds(curWeekOffset);
+  const list = data.filter(i => {
+    if (!i.date) return false;
+    const parts = i.date.split('-').map(Number);
+    const d = new Date(parts[0], parts[1]-1, parts[2]);
+    return d >= monday && d <= sunday;
+  });
+  if (!list.length) { alert('Aucune intervention cette semaine.'); return; }
+  const m1 = monday.toLocaleDateString('fr-FR', {day:'numeric', month:'long'});
+  const m2 = sunday.toLocaleDateString('fr-FR', {day:'numeric', month:'long', year:'numeric'});
+  const subject = 'Breizh Report - Semaine du ' + m1 + ' au ' + m2;
+  const body = formatMailBody(list, 'RAPPORT HEBDOMADAIRE\nSemaine du ' + m1 + ' au ' + m2);
+  window.location.href = 'mailto:' + MAIL_TO + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+}
+
+function mailAll() {
+  if (!data.length) { alert('Aucune intervention enregistrée.'); return; }
+  const subject = 'Breizh Report - Historique complet';
+  const sorted = [...data].sort((a,b) => a.date.localeCompare(b.date));
+  const body = formatMailBody(sorted, 'HISTORIQUE COMPLET DES INTERVENTIONS');
+  window.location.href = 'mailto:' + MAIL_TO + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+}
+
+
+const MAIL_TO = 'ccavalheiro@breizhfacilities.fr';
+
+function formatTableForMail(rows) {
+  if (!rows.length) return 'Aucune intervention.';
+  let txt = 'Date | Type | Arrivée | Départ | Activité | Trajet | Total | Notes\n';
+  txt += '------|------|---------|--------|----------|--------|-------|------\n';
+  rows.forEach(i => {
+    txt += [
+      i.date, i.type,
+      i.arr||'—', i.dep||'—',
+      m2h(i.act||0), m2h(i.traj||0), m2h(i.total||0),
+      (i.notes||'').replace(/\n/g,' ')
+    ].join(' | ') + '\n';
+  });
+  return txt;
+}
+
+function mailDay() {
+  const today = dateStr(new Date());
+  const list = data.filter(i => i.date === today);
+  if (!list.length) { alert('Aucune intervention aujourd\'hui.'); return; }
+  const d = new Date();
+  const label = d.toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+  const act = list.reduce((s,i)=>s+(i.act||0),0);
+  const traj = list.reduce((s,i)=>s+(i.traj||0),0);
+  const subject = encodeURIComponent('Breizh Report – Journée du ' + label);
+  const body = encodeURIComponent(
+    'Rapport journalier – ' + label + '\n' +
+    '========================================\n\n' +
+    'Missions : ' + list.length + '\n' +
+    'Temps activité : ' + m2h(act) + '\n' +
+    'Temps trajet : ' + m2h(traj) + '\n' +
+    'Temps total : ' + m2h(act+traj) + '\n\n' +
+    'DÉTAIL DES INTERVENTIONS\n' +
+    '------------------------\n' +
+    formatTableForMail(list.sort((a,b)=>(a.arr||'').localeCompare(b.arr||'')))
+  );
+  window.location.href = 'mailto:' + MAIL_TO + '?subject=' + subject + '&body=' + body;
+}
+
+function mailWeek() {
+  const { monday, sunday } = getWeekBounds(curWeekOffset);
+  const list = data.filter(i => {
+    if (!i.date) return false;
+    const parts = i.date.split('-').map(Number);
+    const d = new Date(parts[0], parts[1]-1, parts[2]);
+    return d >= monday && d <= sunday;
+  });
+  if (!list.length) { alert('Aucune intervention cette semaine.'); return; }
+  const m1 = monday.toLocaleDateString('fr-FR', {day:'numeric', month:'long'});
+  const m2 = sunday.toLocaleDateString('fr-FR', {day:'numeric', month:'long', year:'numeric'});
+  const act = list.reduce((s,i)=>s+(i.act||0),0);
+  const traj = list.reduce((s,i)=>s+(i.traj||0),0);
+  const subject = encodeURIComponent('Breizh Report – Semaine du ' + m1 + ' au ' + m2);
+  const body = encodeURIComponent(
+    'Rapport hebdomadaire – ' + m1 + ' au ' + m2 + '\n' +
+    '========================================\n\n' +
+    'Missions : ' + list.length + '\n' +
+    'Temps activité : ' + m2h(act) + '\n' +
+    'Temps trajet : ' + m2h(traj) + '\n' +
+    'Temps total : ' + m2h(act+traj) + '\n\n' +
+    'DÉTAIL DES INTERVENTIONS\n' +
+    '------------------------\n' +
+    formatTableForMail(list.sort((a,b)=>a.date.localeCompare(b.date)||(a.arr||'').localeCompare(b.arr||'')))
+  );
+  window.location.href = 'mailto:' + MAIL_TO + '?subject=' + subject + '&body=' + body;
+}
+
+function init(){
+  setGreeting();
+  g('f-date').value=new Date().toISOString().split('T')[0];
+  renderHome(); renderHistory(); renderRecap();
+}
+
+function showScreen(s){
+  document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(x=>x.classList.remove('active'));
+  g('screen-'+s).classList.add('active'); g('nav-'+s).classList.add('active');
+  if(s==='recap') renderRecap(); if(s==='week') renderWeek();
+}
+
+function openModal(id=null){
+  editId=id;
+  if(id){
+    const i=data.find(x=>x.id===id);
+    g('modal-title').textContent='Modifier';
+    g('f-date').value=i.date; g('f-type').value=i.type;
+    g('f-arr').value=i.arr||''; g('f-dep').value=i.dep||'';
+    g('f-mode').value=i.mode||''; g('f-tmin').value=i.tminS||'';
+    g('f-dd').value=i.dd||''; g('f-rd').value=i.rd||'';
+    g('f-notes').value=i.notes||'';
+    g('btn-del').style.display='flex';
+  } else {
+    g('modal-title').textContent='Nouvelle intervention';
+    ['f-type','f-arr','f-dep','f-mode','f-tmin','f-dd','f-rd','f-notes'].forEach(id=>g(id).value='');
+    g('f-date').value=new Date().toISOString().split('T')[0];
+    g('btn-del').style.display='none';
+  }
+  toggleTrajet(); calc();
+  g('modal-overlay').classList.add('open');
+}
+function closeModal(){g('modal-overlay').classList.remove('open');editId=null;}
+function closeOutside(e){if(e.target===g('modal-overlay'))closeModal();}
+
+function toggleTrajet(){
+  const m=g('f-mode').value;
+  g('z-manuel').style.display=m==='manuel'?'block':'none';
+  g('z-auto').style.display=m==='auto'?'block':'none';
+  calc();
+}
+
+function calc(){
+  const am=t2m(g('f-arr').value), dm=t2m(g('f-dep').value);
+  const act=(am!==null&&dm!==null&&dm>am)?dm-am:null;
+  g('c-act').textContent=act!==null?m2h(act):'—';
+  const mode=g('f-mode').value;
+  let traj=null;
+  if(mode==='manuel'){const v=parseInt(g('f-tmin').value);if(!isNaN(v)&&v>0)traj=v;}
+  else if(mode==='auto'){
+    const dd=t2m(g('f-dd').value),rd=t2m(g('f-rd').value);
+    traj=0;
+    if(dd!==null&&am!==null&&am>dd)traj+=am-dd;
+    if(dm!==null&&rd!==null&&rd>dm)traj+=rd-dm;
+    if(!traj)traj=null;
+  }
+  g('c-traj').textContent=traj?m2h(traj):'—';
+  g('c-tot').textContent=m2h((act||0)+(traj||0));
+}
+
+function save(){
+  const type=g('f-type').value;
+  if(!type){alert('Veuillez choisir un type.');return;}
+  const am=t2m(g('f-arr').value), dm=t2m(g('f-dep').value);
+  const act=(am!==null&&dm!==null&&dm>am)?dm-am:0;
+  const mode=g('f-mode').value;
+  let traj=0;
+  if(mode==='manuel')traj=parseInt(g('f-tmin').value)||0;
+  else if(mode==='auto'){
+    const dd=t2m(g('f-dd').value),rd=t2m(g('f-rd').value);
+    if(dd!==null&&am!==null&&am>dd)traj+=am-dd;
+    if(dm!==null&&rd!==null&&rd>dm)traj+=rd-dm;
+  }
+  const e={id:editId||Date.now().toString(),date:g('f-date').value,type,arr:g('f-arr').value,dep:g('f-dep').value,act,mode,tminS:parseInt(g('f-tmin').value)||0,traj,total:act+traj,dd:g('f-dd').value,rd:g('f-rd').value,notes:g('f-notes').value};
+  if(editId)data=data.map(i=>i.id===editId?e:i);else data.unshift(e);
+  localStorage.setItem('iv4',JSON.stringify(data));
+  closeModal(); renderHome(); renderHistory();
+}
+
+function del(){
+  if(!confirm('Supprimer cette intervention ?'))return;
+  data=data.filter(i=>i.id!==editId);
+  localStorage.setItem('iv4',JSON.stringify(data));
+  closeModal(); renderHome(); renderHistory();
+}
+
+function row(i){
+  const icon=ICONS[i.type]||ICONS['Autres'];
+  const h=i.arr&&i.dep?`${i.arr} – ${i.dep}`:'Heures non saisies';
+  const dp=i.date.split('-').map(Number); const date=new Date(dp[0],dp[1]-1,dp[2]).toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
+  return`<div class="ios-row" onclick="openModal('${i.id}')">
+    <div class="row-icon-wrap">${icon}</div>
+    <div class="row-body">
+      <div class="row-title">${i.type}</div>
+      <div class="row-sub">${date} · ${h}</div>
+    </div>
+    <div class="row-end">
+      <span class="row-dur">${m2h(i.act)}</span>
+      <span class="chevron"><svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span>
+    </div>
+  </div>`;
+}
+
+function renderHome(){
+  const today=new Date().toISOString().split('T')[0];
+  const list=data.filter(i=>i.date===today);
+  const act=list.reduce((s,i)=>s+(i.act||0),0);
+  const traj=list.reduce((s,i)=>s+(i.traj||0),0);
+  g('s-nb').textContent=list.length;
+  g('s-act').textContent=m2h(act);
+  g('s-traj').textContent=m2h(traj);
+  g('s-tot').textContent=m2h(act+traj);
+  list.sort((a,b)=>(a.arr||'').localeCompare(b.arr||'')); g('list-today').innerHTML=list.length?list.map(i=>row(i)).join(''):`<div class="empty"><div class="empty-icon-wrap"><svg fill="none" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div><p>Aucune intervention aujourd'hui.<br>Appuyez sur + pour commencer.</p></div>`;
+}
+
+function renderHistory(){
+  const wrap=g('list-all-wrap');
+  if(!data.length){wrap.innerHTML=`<div class="ios-card"><div class="empty"><div class="empty-icon-wrap"><svg fill="none" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><p>Aucune intervention enregistrée.</p></div></div>`;return;}
+  const grp={};
+  data.forEach(i=>{if(!grp[i.date])grp[i.date]=[];grp[i.date].push(i);});
+  wrap.innerHTML=Object.keys(grp).sort((a,b)=>b.localeCompare(a)).map(d=>{
+    const parts=d.split('-').map(Number); const dd=new Date(parts[0],parts[1]-1,parts[2]);
+    const lbl=dd.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+    return`<div class="sec-title hist-date">${lbl}</div><div class="ios-card">${grp[d].map(i=>row(i)).join('')}</div>`;
+  }).join('');
+}
+
+function renderRecap(){
+  g('month-label').textContent=MONTHS[curM]+' '+curY;
+  const ms=`${curY}-${String(curM+1).padStart(2,'0')}`;
+  const list=data.filter(i=>i.date&&i.date.startsWith(ms));
+  const act=list.reduce((s,i)=>s+(i.act||0),0);
+  const traj=list.reduce((s,i)=>s+(i.traj||0),0);
+  g('k-nb').textContent=list.length; g('k-act').textContent=m2h(act);
+  g('k-traj').textContent=m2h(traj); g('k-tot').textContent=m2h(act+traj);
+  const byType={};
+  list.forEach(i=>{if(!byType[i.type])byType[i.type]={nb:0,act:0};byType[i.type].nb++;byType[i.type].act+=i.act||0;});
+  const el=g('recap-rows');
+  if(!Object.keys(byType).length){el.innerHTML=`<div class="empty"><div class="empty-icon-wrap"><svg fill="none" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div><p>Aucune donnée ce mois.</p></div>`;return;}
+  el.innerHTML=Object.entries(byType).sort((a,b)=>b[1].nb-a[1].nb).map(([t,s])=>`
+    <div class="ios-row">
+      <div class="row-icon-wrap">${ICONS[t]||ICONS['Autres']}</div>
+      <div class="row-body"><div class="row-title">${t}</div><div class="row-sub">${s.nb} intervention${s.nb>1?'s':''}</div></div>
+      <div class="row-end"><span class="row-dur">${m2h(s.act)}</span></div>
+    </div>`).join('');
+}
+
+
+function sendMail(mode) {
+  const MAIL = 'ccavalheiro@breizhfacilities.fr';
+  let rows = [];
+  let subject = '';
+
+  if (mode === 'week') {
+    const { monday, sunday } = getWeekBounds(curWeekOffset);
+    rows = data.filter(i => {
+      if (!i.date) return false;
+      const parts = i.date.split('-').map(Number);
+      const d = new Date(parts[0], parts[1]-1, parts[2]);
+      return d >= monday && d <= sunday;
+    });
+    const m1 = monday.toLocaleDateString('fr-FR', {day:'numeric', month:'long'});
+    const m2 = sunday.toLocaleDateString('fr-FR', {day:'numeric', month:'long', year:'numeric'});
+    subject = `Breizh Report – Semaine du ${m1} au ${m2}`;
+  } else {
+    rows = [...data].sort((a,b) => a.date.localeCompare(b.date));
+    subject = 'Breizh Report – Historique complet';
+  }
+
+  if (!rows.length) { alert('Aucune intervention à envoyer.'); return; }
+
+  // Group by date
+  const grp = {};
+  rows.forEach(i => { if (!grp[i.date]) grp[i.date] = []; grp[i.date].push(i); });
+
+  let body = subject + '%0A';
+  body += '══════════════════════════%0A%0A';
+
+  Object.keys(grp).sort((a,b) => a.localeCompare(b)).forEach(date => {
+    const parts = date.split('-').map(Number);
+    const d = new Date(parts[0], parts[1]-1, parts[2]);
+    const dateLabel = d.toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+    body += `📅 ${dateLabel}%0A`;
+    body += '──────────────────────────%0A';
+    grp[date].sort((a,b) => (a.arr||'').localeCompare(b.arr||'')).forEach(i => {
+      const h = i.arr && i.dep ? `${i.arr} – ${i.dep}` : 'Heures non saisies';
+      body += `• ${i.type}%0A`;
+      body += `  Horaires : ${h}%0A`;
+      body += `  Activité : ${m2h(i.act)} | Trajet : ${m2h(i.traj)} | Total : ${m2h(i.total)}%0A`;
+      if (i.notes) body += `  Notes : ${i.notes}%0A`;
+      body += '%0A';
+    });
+    // Day total
+    const dayAct = grp[date].reduce((s,i) => s+(i.act||0), 0);
+    const dayTraj = grp[date].reduce((s,i) => s+(i.traj||0), 0);
+    body += `  TOTAL JOUR → Activité : ${m2h(dayAct)} | Trajet : ${m2h(dayTraj)} | Total : ${m2h(dayAct+dayTraj)}%0A`;
+    body += '%0A';
+  });
+
+  // Grand total
+  const totAct = rows.reduce((s,i) => s+(i.act||0), 0);
+  const totTraj = rows.reduce((s,i) => s+(i.traj||0), 0);
+  body += '══════════════════════════%0A';
+  body += `TOTAL GÉNÉRAL%0A`;
+  body += `Missions : ${rows.length} | Activité : ${m2h(totAct)} | Trajet : ${m2h(totTraj)} | Total : ${m2h(totAct+totTraj)}%0A`;
+  body += '%0A-- Envoyé depuis Breizh Report';
+
+  window.location.href = `mailto:${MAIL}?subject=${encodeURIComponent(subject)}&body=${body}`;
+}
+function changeMonth(d){curM+=d;if(curM<0){curM=11;curY--;}if(curM>11){curM=0;curY++;}renderRecap();}
+
+// ── SEMAINE ──
+let curWeekOffset = 0;
+
+function getWeekBounds(offset) {
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + offset * 7);
+  monday.setHours(0,0,0,0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23,59,59,999);
+  return { monday, sunday };
+}
+
+function dateStr(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+day;
+}
+
+function renderWeek() {
+  const { monday, sunday } = getWeekBounds(curWeekOffset);
+  const m1 = monday.toLocaleDateString('fr-FR', {day:'numeric',month:'short'});
+  const m2 = sunday.toLocaleDateString('fr-FR', {day:'numeric',month:'short'});
+  g('week-label').textContent = m1 + ' – ' + m2;
+
+  const list = data.filter(i => {
+    if (!i.date) return false;
+    const parts = i.date.split('-').map(Number);
+    const d = new Date(parts[0], parts[1]-1, parts[2]);
+    return d >= monday && d <= sunday;
+  });
+
+  const act = list.reduce((s,i)=>s+(i.act||0),0);
+  const traj = list.reduce((s,i)=>s+(i.traj||0),0);
+  g('w-nb').textContent = list.length;
+  g('w-act').textContent = m2h(act);
+  g('w-traj').textContent = m2h(traj);
+  g('w-tot').textContent = m2h(act+traj);
+
+  // Days
+  const DAYS_FR = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+  let daysHtml = '';
+  for (let i = 0; i < 7; i++) {
+    const day = new Date(monday);
+    day.setDate(monday.getDate() + i);
+    const ds = dateStr(day);
+    const dayData = list.filter(x => x.date === ds);
+    const dayAct = dayData.reduce((s,x)=>s+(x.act||0),0);
+    const isToday = ds === dateStr(new Date());
+    daysHtml += `<div class="ios-row" style="${isToday?'background:var(--blue-light);':''}" >
+      <div class="row-icon-wrap ${dayData.length?'':'gray'}">
+        <svg fill="none" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" stroke-linecap="round"/><path stroke-linecap="round" d="M16 2v4M8 2v4M3 10h18"/></svg>
+      </div>
+      <div class="row-body">
+        <div class="row-title" style="font-weight:${isToday?'600':'400'}">${DAYS_FR[i]} ${day.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})}</div>
+        <div class="row-sub">${dayData.length ? dayData.length+' intervention'+(dayData.length>1?'s':'') : 'Aucune intervention'}</div>
+      </div>
+      <div class="row-end"><span class="row-dur">${dayAct>0?m2h(dayAct):'—'}</span></div>
+    </div>`;
+  }
+  g('week-days').innerHTML = `<div class="ios-card">${daysHtml}</div>`;
+
+  // By type
+  const byType = {};
+  list.forEach(i=>{if(!byType[i.type])byType[i.type]={nb:0,act:0};byType[i.type].nb++;byType[i.type].act+=i.act||0;});
+  const el = g('week-types');
+  if (!Object.keys(byType).length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon-wrap"><svg fill="none" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div><p>Aucune donnée cette semaine.</p></div>`;
+    return;
+  }
+  el.innerHTML = Object.entries(byType).sort((a,b)=>b[1].nb-a[1].nb).map(([t,s])=>`
+    <div class="ios-row">
+      <div class="row-icon-wrap">${ICONS[t]||ICONS['Autres']}</div>
+      <div class="row-body"><div class="row-title">${t}</div><div class="row-sub">${s.nb} intervention${s.nb>1?'s':''}</div></div>
+      <div class="row-end"><span class="row-dur">${m2h(s.act)}</span></div>
+    </div>`).join('');
+}
+
+function changeWeek(d) { curWeekOffset += d; renderWeek(); }
+
+// ── EXPORT CSV ──
+function toCSV(rows) {
+  const BOM = '﻿';
+  const headers = ['Date','Type intervention','Heure arrivée','Heure départ','Temps activité (min)','Mode trajet','Temps trajet (min)','Temps total (min)','Notes'];
+  const lines = [headers.join(';')];
+  rows.forEach(i => {
+    lines.push([
+      i.date, i.type,
+      i.arr||'', i.dep||'',
+      i.act||0, i.mode||'',
+      i.traj||0, i.total||0,
+      (i.notes||'').replace(/;/g,',')
+    ].join(';'));
+  });
+  return BOM + lines.join('\n');
+}
+
+function downloadCSV(content, filename) {
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportCSV() {
+  const { monday, sunday } = getWeekBounds(curWeekOffset);
+  const list = data.filter(i => {
+    if (!i.date) return false;
+    const parts = i.date.split('-').map(Number);
+    const d = new Date(parts[0], parts[1]-1, parts[2]);
+    return d >= monday && d <= sunday;
+  });
+  if (!list.length) { alert('Aucune intervention cette semaine.'); return; }
+  const m1 = monday.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,'-');
+  downloadCSV(toCSV(list), `interventions-semaine-${m1}.csv`);
+}
+
+function exportAllCSV() {
+  if (!data.length) { alert('Aucune intervention enregistrée.'); return; }
+  downloadCSV(toCSV([...data].sort((a,b)=>a.date.localeCompare(b.date))), 'interventions-historique.csv');
+}
+
+init();
+</script>
+</body>
+</html>
