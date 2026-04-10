@@ -276,13 +276,17 @@ body { font-family: var(--sf); background: var(--bg); color: var(--label); max-w
     <div class="ios-card" id="week-types"></div>
   </div>
   <div style="padding:16px 20px 0">
-    <button class="btn primary" onclick="exportCSV()">
-      <svg fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-      Exporter en CSV (Excel)
+    <button class="btn primary" onclick="sendMail('week')">
+      <svg fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+      Envoyer la semaine par mail
     </button>
-    <button class="btn secondary" style="margin-top:10px" onclick="exportAllCSV()">
+    <button class="btn secondary" style="margin-top:10px" onclick="sendMail('all')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+      Envoyer tout l'historique par mail
+    </button>
+    <button class="btn secondary" style="margin-top:10px" onclick="exportCSV()">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-      Exporter tout l'historique
+      Télécharger CSV (Excel)
     </button>
   </div>
 </div>
@@ -456,6 +460,55 @@ const m2h=m=>{if(!m||m<=0)return'—';const h=Math.floor(m/60),mn=m%60;return h>
 const g=id=>document.getElementById(id);
 
 
+
+// ── EMAIL EXPORT ──
+const MAIL_TO = 'ccavalheiro@breizhfacilities.fr';
+
+function formatMailBody(rows) {
+  const lines = ['Date;Type;Arrivée;Départ;Activité (min);Trajet (min);Total (min);Notes'];
+  rows.forEach(i => {
+    lines.push([
+      i.date, i.type,
+      i.arr||'', i.dep||'',
+      i.act||0, i.traj||0, i.total||0,
+      (i.notes||'').replace(/;/g,',')
+    ].join(';'));
+  });
+  return lines.join('\n');
+}
+
+function mailWeek() {
+  const { monday, sunday } = getWeekBounds(curWeekOffset);
+  const list = data.filter(i => {
+    if (!i.date) return false;
+    const parts = i.date.split('-').map(Number);
+    const d = new Date(parts[0], parts[1]-1, parts[2]);
+    return d >= monday && d <= sunday;
+  });
+  if (!list.length) { alert('Aucune intervention cette semaine.'); return; }
+  const m1 = monday.toLocaleDateString('fr-FR', {day:'numeric',month:'long'});
+  const m2 = sunday.toLocaleDateString('fr-FR', {day:'numeric',month:'long'});
+  const subject = encodeURIComponent('Breizh Report — Semaine du ' + m1 + ' au ' + m2);
+  const body = encodeURIComponent(
+    'Bonjour,\n\nVeuillez trouver ci-dessous le récapitulatif de la semaine du ' + m1 + ' au ' + m2 + '.\n\n' +
+    formatMailBody(list.sort((a,b)=>a.date.localeCompare(b.date)||(a.arr||'').localeCompare(b.arr||''))) +
+    '\n\nCordialement,\nBreizh Report'
+  );
+  window.location.href = 'mailto:' + MAIL_TO + '?subject=' + subject + '&body=' + body;
+}
+
+function mailAll() {
+  if (!data.length) { alert('Aucune intervention enregistrée.'); return; }
+  const sorted = [...data].sort((a,b)=>a.date.localeCompare(b.date)||(a.arr||'').localeCompare(b.arr||''));
+  const subject = encodeURIComponent('Breizh Report — Historique complet');
+  const body = encodeURIComponent(
+    'Bonjour,\n\nVeuillez trouver ci-dessous l\'historique complet des interventions.\n\n' +
+    formatMailBody(sorted) +
+    '\n\nCordialement,\nBreizh Report'
+  );
+  window.location.href = 'mailto:' + MAIL_TO + '?subject=' + subject + '&body=' + body;
+}
+
 function setGreeting() {
   const now = new Date();
   const h = now.getHours();
@@ -468,6 +521,219 @@ function setGreeting() {
   if (gl) gl.textContent = greet;
   if (gd) gd.textContent = dateStr;
 }
+
+const MAIL_TO = 'ccavalheiro@breizhfacilities.fr';
+
+function buildMailBody(rows, title) {
+  const DAYS_FR = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+  let body = title + '\n';
+  body += '='.repeat(50) + '\n\n';
+  
+  // Group by date
+  const grp = {};
+  rows.forEach(i => { if(!grp[i.date]) grp[i.date]=[]; grp[i.date].push(i); });
+  
+  let totalAct = 0, totalTraj = 0, nbTotal = 0;
+  
+  Object.keys(grp).sort((a,b)=>a.localeCompare(b)).forEach(d => {
+    const dd = d.split('-').map(Number);
+    const date = new Date(dd[0], dd[1]-1, dd[2]);
+    const dayName = DAYS_FR[date.getDay()];
+    const dateLabel = date.toLocaleDateString('fr-FR', {day:'numeric', month:'long', year:'numeric'});
+    body += dayName + ' ' + dateLabel + '\n';
+    body += '-'.repeat(40) + '\n';
+    
+    const dayList = grp[d].sort((a,b)=>(a.arr||'').localeCompare(b.arr||''));
+    dayList.forEach(i => {
+      const h = i.arr && i.dep ? i.arr + ' - ' + i.dep : 'Heures non saisies';
+      const act = m2h(i.act);
+      const traj = i.traj > 0 ? ' | Trajet: ' + m2h(i.traj) : '';
+      body += '• ' + i.type + '\n';
+      body += '  ' + h + ' | Activité: ' + act + traj + '\n';
+      if(i.notes) body += '  Note: ' + i.notes + '\n';
+      totalAct += i.act || 0;
+      totalTraj += i.traj || 0;
+      nbTotal++;
+    });
+    body += '\n';
+  });
+  
+  body += '='.repeat(50) + '\n';
+  body += 'TOTAL : ' + nbTotal + ' intervention(s)\n';
+  body += 'Temps activité : ' + m2h(totalAct) + '\n';
+  body += 'Temps trajet : ' + m2h(totalTraj) + '\n';
+  body += 'Temps total : ' + m2h(totalAct + totalTraj) + '\n';
+  body += '\nBreizh Report - Suivi des interventions';
+  return body;
+}
+
+function mailWeek() {
+  const { monday, sunday } = getWeekBounds(curWeekOffset);
+  const list = data.filter(i => {
+    if (!i.date) return false;
+    const parts = i.date.split('-').map(Number);
+    const d = new Date(parts[0], parts[1]-1, parts[2]);
+    return d >= monday && d <= sunday;
+  });
+  if (!list.length) { alert('Aucune intervention cette semaine.'); return; }
+  
+  const m1 = monday.toLocaleDateString('fr-FR', {day:'numeric', month:'long'});
+  const m2 = sunday.toLocaleDateString('fr-FR', {day:'numeric', month:'long', year:'numeric'});
+  const subject = 'Rapport semaine ' + m1 + ' - ' + m2;
+  const body = buildMailBody(list, 'RAPPORT SEMAINE DU ' + m1.toUpperCase() + ' AU ' + m2.toUpperCase());
+  
+  window.location.href = 'mailto:' + MAIL_TO + 
+    '?subject=' + encodeURIComponent(subject) + 
+    '&body=' + encodeURIComponent(body);
+}
+
+function mailAll() {
+  if (!data.length) { alert('Aucune intervention enregistrée.'); return; }
+  const subject = 'Historique complet - Breizh Report';
+  const body = buildMailBody([...data], 'HISTORIQUE COMPLET DES INTERVENTIONS');
+  window.location.href = 'mailto:' + MAIL_TO + 
+    '?subject=' + encodeURIComponent(subject) + 
+    '&body=' + encodeURIComponent(body);
+}
+
+
+// ── EMAIL EXPORT ──
+const MAIL_TO = 'ccavalheiro@breizhfacilities.fr';
+
+function formatMailBody(rows, title) {
+  let body = title + '\n';
+  body += '='.repeat(40) + '\n\n';
+  
+  // Group by date
+  const grp = {};
+  rows.forEach(i => {
+    if (!grp[i.date]) grp[i.date] = [];
+    grp[i.date].push(i);
+  });
+  
+  let totalAct = 0, totalTraj = 0, totalNb = 0;
+  
+  Object.keys(grp).sort((a,b)=>a.localeCompare(b)).forEach(d => {
+    const parts = d.split('-').map(Number);
+    const dd = new Date(parts[0], parts[1]-1, parts[2]);
+    const label = dd.toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'});
+    body += label.toUpperCase() + '\n';
+    body += '-'.repeat(30) + '\n';
+    grp[d].sort((a,b)=>(a.arr||'').localeCompare(b.arr||'')).forEach(i => {
+      const h = i.arr && i.dep ? i.arr+' - '+i.dep : 'Heures non saisies';
+      body += '• ' + i.type + '\n';
+      body += '  Horaires : ' + h + '\n';
+      body += '  Activité : ' + m2h(i.act) + (i.traj>0 ? ' | Trajet : '+m2h(i.traj) : '') + '\n';
+      if (i.notes) body += '  Notes : ' + i.notes + '\n';
+      body += '\n';
+      totalAct += i.act || 0;
+      totalTraj += i.traj || 0;
+      totalNb++;
+    });
+  });
+  
+  body += '='.repeat(40) + '\n';
+  body += 'TOTAL : ' + totalNb + ' intervention(s)\n';
+  body += 'Temps activité : ' + m2h(totalAct) + '\n';
+  body += 'Temps trajet : ' + m2h(totalTraj) + '\n';
+  body += 'Temps total : ' + m2h(totalAct + totalTraj) + '\n\n';
+  body += 'Envoyé depuis Breizh Report';
+  return body;
+}
+
+function mailWeek() {
+  const { monday, sunday } = getWeekBounds(curWeekOffset);
+  const list = data.filter(i => {
+    if (!i.date) return false;
+    const parts = i.date.split('-').map(Number);
+    const d = new Date(parts[0], parts[1]-1, parts[2]);
+    return d >= monday && d <= sunday;
+  });
+  if (!list.length) { alert('Aucune intervention cette semaine.'); return; }
+  const m1 = monday.toLocaleDateString('fr-FR', {day:'numeric', month:'long'});
+  const m2 = sunday.toLocaleDateString('fr-FR', {day:'numeric', month:'long', year:'numeric'});
+  const subject = 'Breizh Report - Semaine du ' + m1 + ' au ' + m2;
+  const body = formatMailBody(list, 'RAPPORT HEBDOMADAIRE\nSemaine du ' + m1 + ' au ' + m2);
+  window.location.href = 'mailto:' + MAIL_TO + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+}
+
+function mailAll() {
+  if (!data.length) { alert('Aucune intervention enregistrée.'); return; }
+  const subject = 'Breizh Report - Historique complet';
+  const sorted = [...data].sort((a,b) => a.date.localeCompare(b.date));
+  const body = formatMailBody(sorted, 'HISTORIQUE COMPLET DES INTERVENTIONS');
+  window.location.href = 'mailto:' + MAIL_TO + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+}
+
+
+const MAIL_TO = 'ccavalheiro@breizhfacilities.fr';
+
+function formatTableForMail(rows) {
+  if (!rows.length) return 'Aucune intervention.';
+  let txt = 'Date | Type | Arrivée | Départ | Activité | Trajet | Total | Notes\n';
+  txt += '------|------|---------|--------|----------|--------|-------|------\n';
+  rows.forEach(i => {
+    txt += [
+      i.date, i.type,
+      i.arr||'—', i.dep||'—',
+      m2h(i.act||0), m2h(i.traj||0), m2h(i.total||0),
+      (i.notes||'').replace(/\n/g,' ')
+    ].join(' | ') + '\n';
+  });
+  return txt;
+}
+
+function mailDay() {
+  const today = dateStr(new Date());
+  const list = data.filter(i => i.date === today);
+  if (!list.length) { alert('Aucune intervention aujourd\'hui.'); return; }
+  const d = new Date();
+  const label = d.toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+  const act = list.reduce((s,i)=>s+(i.act||0),0);
+  const traj = list.reduce((s,i)=>s+(i.traj||0),0);
+  const subject = encodeURIComponent('Breizh Report – Journée du ' + label);
+  const body = encodeURIComponent(
+    'Rapport journalier – ' + label + '\n' +
+    '========================================\n\n' +
+    'Missions : ' + list.length + '\n' +
+    'Temps activité : ' + m2h(act) + '\n' +
+    'Temps trajet : ' + m2h(traj) + '\n' +
+    'Temps total : ' + m2h(act+traj) + '\n\n' +
+    'DÉTAIL DES INTERVENTIONS\n' +
+    '------------------------\n' +
+    formatTableForMail(list.sort((a,b)=>(a.arr||'').localeCompare(b.arr||'')))
+  );
+  window.location.href = 'mailto:' + MAIL_TO + '?subject=' + subject + '&body=' + body;
+}
+
+function mailWeek() {
+  const { monday, sunday } = getWeekBounds(curWeekOffset);
+  const list = data.filter(i => {
+    if (!i.date) return false;
+    const parts = i.date.split('-').map(Number);
+    const d = new Date(parts[0], parts[1]-1, parts[2]);
+    return d >= monday && d <= sunday;
+  });
+  if (!list.length) { alert('Aucune intervention cette semaine.'); return; }
+  const m1 = monday.toLocaleDateString('fr-FR', {day:'numeric', month:'long'});
+  const m2 = sunday.toLocaleDateString('fr-FR', {day:'numeric', month:'long', year:'numeric'});
+  const act = list.reduce((s,i)=>s+(i.act||0),0);
+  const traj = list.reduce((s,i)=>s+(i.traj||0),0);
+  const subject = encodeURIComponent('Breizh Report – Semaine du ' + m1 + ' au ' + m2);
+  const body = encodeURIComponent(
+    'Rapport hebdomadaire – ' + m1 + ' au ' + m2 + '\n' +
+    '========================================\n\n' +
+    'Missions : ' + list.length + '\n' +
+    'Temps activité : ' + m2h(act) + '\n' +
+    'Temps trajet : ' + m2h(traj) + '\n' +
+    'Temps total : ' + m2h(act+traj) + '\n\n' +
+    'DÉTAIL DES INTERVENTIONS\n' +
+    '------------------------\n' +
+    formatTableForMail(list.sort((a,b)=>a.date.localeCompare(b.date)||(a.arr||'').localeCompare(b.arr||'')))
+  );
+  window.location.href = 'mailto:' + MAIL_TO + '?subject=' + subject + '&body=' + body;
+}
+
 function init(){
   setGreeting();
   g('f-date').value=new Date().toISOString().split('T')[0];
@@ -616,6 +882,68 @@ function renderRecap(){
     </div>`).join('');
 }
 
+
+function sendMail(mode) {
+  const MAIL = 'ccavalheiro@breizhfacilities.fr';
+  let rows = [];
+  let subject = '';
+
+  if (mode === 'week') {
+    const { monday, sunday } = getWeekBounds(curWeekOffset);
+    rows = data.filter(i => {
+      if (!i.date) return false;
+      const parts = i.date.split('-').map(Number);
+      const d = new Date(parts[0], parts[1]-1, parts[2]);
+      return d >= monday && d <= sunday;
+    });
+    const m1 = monday.toLocaleDateString('fr-FR', {day:'numeric', month:'long'});
+    const m2 = sunday.toLocaleDateString('fr-FR', {day:'numeric', month:'long', year:'numeric'});
+    subject = `Breizh Report – Semaine du ${m1} au ${m2}`;
+  } else {
+    rows = [...data].sort((a,b) => a.date.localeCompare(b.date));
+    subject = 'Breizh Report – Historique complet';
+  }
+
+  if (!rows.length) { alert('Aucune intervention à envoyer.'); return; }
+
+  // Group by date
+  const grp = {};
+  rows.forEach(i => { if (!grp[i.date]) grp[i.date] = []; grp[i.date].push(i); });
+
+  let body = subject + '%0A';
+  body += '══════════════════════════%0A%0A';
+
+  Object.keys(grp).sort((a,b) => a.localeCompare(b)).forEach(date => {
+    const parts = date.split('-').map(Number);
+    const d = new Date(parts[0], parts[1]-1, parts[2]);
+    const dateLabel = d.toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+    body += `📅 ${dateLabel}%0A`;
+    body += '──────────────────────────%0A';
+    grp[date].sort((a,b) => (a.arr||'').localeCompare(b.arr||'')).forEach(i => {
+      const h = i.arr && i.dep ? `${i.arr} – ${i.dep}` : 'Heures non saisies';
+      body += `• ${i.type}%0A`;
+      body += `  Horaires : ${h}%0A`;
+      body += `  Activité : ${m2h(i.act)} | Trajet : ${m2h(i.traj)} | Total : ${m2h(i.total)}%0A`;
+      if (i.notes) body += `  Notes : ${i.notes}%0A`;
+      body += '%0A';
+    });
+    // Day total
+    const dayAct = grp[date].reduce((s,i) => s+(i.act||0), 0);
+    const dayTraj = grp[date].reduce((s,i) => s+(i.traj||0), 0);
+    body += `  TOTAL JOUR → Activité : ${m2h(dayAct)} | Trajet : ${m2h(dayTraj)} | Total : ${m2h(dayAct+dayTraj)}%0A`;
+    body += '%0A';
+  });
+
+  // Grand total
+  const totAct = rows.reduce((s,i) => s+(i.act||0), 0);
+  const totTraj = rows.reduce((s,i) => s+(i.traj||0), 0);
+  body += '══════════════════════════%0A';
+  body += `TOTAL GÉNÉRAL%0A`;
+  body += `Missions : ${rows.length} | Activité : ${m2h(totAct)} | Trajet : ${m2h(totTraj)} | Total : ${m2h(totAct+totTraj)}%0A`;
+  body += '%0A-- Envoyé depuis Breizh Report';
+
+  window.location.href = `mailto:${MAIL}?subject=${encodeURIComponent(subject)}&body=${body}`;
+}
 function changeMonth(d){curM+=d;if(curM<0){curM=11;curY--;}if(curM>11){curM=0;curY++;}renderRecap();}
 
 // ── SEMAINE ──
