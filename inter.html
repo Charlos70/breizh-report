@@ -735,6 +735,20 @@ function mailWeek() {
 }
 
 function init(){
+  // Migration: récupère les données des anciennes versions
+  const keys = ['iv4', 'iv3', 'iv2', 'interventions', 'interv_data'];
+  let merged = [];
+  const seen = new Set();
+  keys.forEach(k => {
+    try {
+      const d = JSON.parse(localStorage.getItem(k) || '[]');
+      d.forEach(i => { if(i.id && !seen.has(i.id)) { seen.add(i.id); merged.push(i); } });
+    } catch(e) {}
+  });
+  if (merged.length > 0) {
+    data = merged;
+    localStorage.setItem('iv4', JSON.stringify(data));
+  }
   setGreeting();
   g('f-date').value=new Date().toISOString().split('T')[0];
   renderHome(); renderHistory(); renderRecap();
