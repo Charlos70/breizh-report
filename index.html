@@ -203,9 +203,9 @@ body { font-family: var(--sf); background: var(--bg); color: var(--label); max-w
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
       Envoyer tout l'historique par mail
     </button>
-    <button class="btn secondary" style="margin-top:10px" onclick="exportCSV()">
+    <button class="btn secondary" style="margin-top:10px" onclick="exportExcel()">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-      Télécharger CSV (Excel)
+      Télécharger Excel (.xlsx)
     </button>
   </div>
 </div>
@@ -662,8 +662,8 @@ function sendMail(mode) {
   window.location.href = 'mailto:' + MAIL_TO + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(buildMailBody(rows, title));
 }
 
-// ── CSV ──
-function exportCSV() {
+// ── EXCEL ──
+function exportExcel() {
   const { monday, sunday } = getWeekBounds(curWeekOffset);
   const list = data.filter(i => {
     if (!i.date) return false;
@@ -672,17 +672,90 @@ function exportCSV() {
     return d >= monday && d <= sunday;
   });
   if (!list.length) { alert('Aucune intervention cette semaine.'); return; }
-  const BOM = '\uFEFF';
-  const headers = ['Date','Type intervention','Heure arrivée','Heure départ','Temps activité (min)','Mode trajet','Temps trajet (min)','Temps total (min)','Notes'];
-  const lines = [headers.join(';')];
+
   const sorted = list.sort((a, b) => a.date.localeCompare(b.date) || (a.arr || '').localeCompare(b.arr || ''));
-  sorted.forEach(i => lines.push([i.date, i.type, i.arr || '', i.dep || '', i.act || 0, i.mode || '', i.traj || 0, i.total || 0, (i.notes || '').replace(/;/g, ',')].join(';')));
-  const blob = new Blob([BOM + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  const m1 = monday.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
-  a.href = url; a.download = `interventions-semaine-${m1}.csv`; a.click();
-  URL.revokeObjectURL(url);
+
+  // Charger SheetJS si pas encore chargé
+  function doExport() {
+    const XLSX = window.XLSX;
+    const wb = XLSX.utils.book_new();
+
+    // ── Feuille DÉTAIL ──
+    const m1str = monday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+    const m2str = sunday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    const wsData = [];
+    // Titre
+    wsData.push([`Breizh Report — Semaine du ${m1str} au ${m2str}`]);
+    wsData.push([]);
+    // En-têtes
+    wsData.push(['Date', 'Jour', 'Type d\'intervention', 'Arrivée', 'Départ', 'Activité (h)', 'Trajet (h)', 'Total (h)', 'Notes']);
+
+    const DAYS_FR = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+    let totAct = 0, totTraj = 0;
+
+    sorted.forEach(i => {
+      const parts = i.date.split('-').map(Number);
+      const dd = new Date(parts[0], parts[1]-1, parts[2]);
+      const dateLabel = dd.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const dayLabel = DAYS_FR[dd.getDay()];
+      const actH = i.act ? +(i.act / 60).toFixed(2) : 0;
+      const trajH = i.traj ? +(i.traj / 60).toFixed(2) : 0;
+      const totH = +((actH + trajH).toFixed(2));
+      totAct += i.act || 0;
+      totTraj += i.traj || 0;
+      wsData.push([dateLabel, dayLabel, i.type, i.arr || '', i.dep || '', actH, trajH, totH, i.notes || '']);
+    });
+
+    // Ligne totaux
+    wsData.push([]);
+    wsData.push(['', '', '', '', 'TOTAL', +(totAct/60).toFixed(2), +(totTraj/60).toFixed(2), +((totAct+totTraj)/60).toFixed(2), '']);
+
+    // ── Feuille RÉSUMÉ PAR JOUR ──
+    const wsSumData = [];
+    wsSumData.push([`Résumé par jour — Semaine du ${m1str} au ${m2str}`]);
+    wsSumData.push([]);
+    wsSumData.push(['Date', 'Jour', 'Nb missions', 'Activité (h)', 'Trajet (h)', 'Total (h)']);
+
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(monday);
+      day.setDate(monday.getDate() + i);
+      const ds = dateStr(day);
+      const dayData = sorted.filter(x => x.date === ds);
+      const dAct = dayData.reduce((s, x) => s + (x.act || 0), 0);
+      const dTraj = dayData.reduce((s, x) => s + (x.traj || 0), 0);
+      const dateLabel = day.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      wsSumData.push([dateLabel, DAYS_FR[day.getDay()], dayData.length, +(dAct/60).toFixed(2), +(dTraj/60).toFixed(2), +((dAct+dTraj)/60).toFixed(2)]);
+    }
+    wsSumData.push([]);
+    wsSumData.push(['', 'TOTAL', sorted.length, +(totAct/60).toFixed(2), +(totTraj/60).toFixed(2), +((totAct+totTraj)/60).toFixed(2)]);
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    const wsSum = XLSX.utils.aoa_to_sheet(wsSumData);
+
+    // Largeurs colonnes feuille détail
+    ws['!cols'] = [
+      { wch: 12 }, { wch: 6 }, { wch: 42 }, { wch: 9 }, { wch: 9 },
+      { wch: 13 }, { wch: 13 }, { wch: 13 }, { wch: 30 }
+    ];
+    wsSum['!cols'] = [{ wch: 12 }, { wch: 6 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }];
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Détail');
+    XLSX.utils.book_append_sheet(wb, wsSum, 'Résumé par jour');
+
+    const m1file = monday.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
+    XLSX.writeFile(wb, `breizh-report-semaine-${m1file}.xlsx`);
+  }
+
+  if (window.XLSX) {
+    doExport();
+  } else {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    script.onload = doExport;
+    script.onerror = () => alert('Impossible de charger la librairie Excel. Vérifiez votre connexion internet.');
+    document.head.appendChild(script);
+  }
 }
 
 function init() {
