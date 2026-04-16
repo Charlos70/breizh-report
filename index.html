@@ -195,9 +195,13 @@ body { font-family: var(--sf); background: var(--bg); color: var(--label); max-w
     <div class="ios-card" id="week-types"></div>
   </div>
   <div style="padding:16px 20px 0">
-    <button class="btn primary" onclick="sendMail('week')">
-      <svg fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-      Envoyer la semaine par mail
+    <button class="btn primary" onclick="sendTableauMail()">
+      <svg fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/></svg>
+      Tableau récapitulatif (à imprimer)
+    </button>
+    <button class="btn secondary" style="margin-top:10px" onclick="sendMail('week')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+      Envoyer résumé texte semaine
     </button>
     <button class="btn secondary" style="margin-top:10px" onclick="sendMail('all')">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
@@ -611,6 +615,83 @@ function renderWeek() {
 }
 
 function changeWeek(d) { curWeekOffset += d; renderWeek(); }
+
+// ── TABLEAU RÉCAP MAIL ──
+function sendTableauMail() {
+  const { monday, sunday } = getWeekBounds(curWeekOffset);
+  const list = data.filter(i => {
+    if (!i.date) return false;
+    const parts = i.date.split('-').map(Number);
+    const d = new Date(parts[0], parts[1]-1, parts[2]);
+    return d >= monday && d <= sunday;
+  });
+  if (!list.length) { alert('Aucune intervention cette semaine.'); return; }
+
+  const m1 = monday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+  const m2 = sunday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  const DAYS_FR = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+
+  const sorted = list.sort((a, b) => a.date.localeCompare(b.date) || (a.arr||'').localeCompare(b.arr||''));
+
+  // Grouper par date
+  const grp = {};
+  sorted.forEach(i => { if (!grp[i.date]) grp[i.date] = []; grp[i.date].push(i); });
+
+  let totAct = 0, totTraj = 0;
+
+  // Construire les lignes du tableau en texte (compatible mail)
+  // On utilise un format texte structuré lisible et imprimable
+  const SEP  = '+------------+--------+------------------------------------------+----------+----------+----------+----------+';
+  const HEAD = '| Jour       | Date   | Type d\'intervention                      | Arrivée  | Départ   | Activité | Trajet   |';
+
+  let body = `RAPPORT HEBDOMADAIRE — BREIZH FACILITIES\n`;
+  body += `Semaine du ${m1} au ${m2}\n`;
+  body += `${'='.repeat(73)}\n\n`;
+  body += SEP + '\n';
+  body += HEAD + '\n';
+  body += SEP + '\n';
+
+  Object.keys(grp).sort((a,b) => a.localeCompare(b)).forEach(d => {
+    const parts = d.split('-').map(Number);
+    const dd = new Date(parts[0], parts[1]-1, parts[2]);
+    const dayName = DAYS_FR[dd.getDay()];
+    const dateShort = dd.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+    const dayRows = grp[d].sort((a,b) => (a.arr||'').localeCompare(b.arr||''));
+
+    dayRows.forEach((i, idx) => {
+      // Tronquer le type si trop long pour le tableau
+      const type = i.type.length > 40 ? i.type.substring(0, 38) + '..' : i.type;
+      const arr = i.arr || '—     ';
+      const dep = i.dep || '—     ';
+      const act = m2h(i.act||0).padStart(6);
+      const traj = i.traj > 0 ? m2h(i.traj).padStart(6) : '     —';
+      const jour = idx === 0 ? dayName.padEnd(10) : '          ';
+      const date = idx === 0 ? dateShort.padEnd(6) : '      ';
+      totAct += i.act || 0;
+      totTraj += i.traj || 0;
+      body += `| ${jour} | ${date} | ${type.padEnd(40)} | ${arr.padEnd(8)} | ${dep.padEnd(8)} | ${act} h  | ${traj} h  |\n`;
+      if (i.notes) {
+        body += `|            |        |  → Note: ${i.notes.substring(0,55).padEnd(55)}|\n`;
+      }
+    });
+    body += SEP + '\n';
+  });
+
+  body += `\n`;
+  body += `TOTAUX\n`;
+  body += `${'─'.repeat(40)}\n`;
+  body += `Nombre d'interventions : ${sorted.length}\n`;
+  body += `Temps d'activité total  : ${m2h(totAct)}\n`;
+  body += `Temps de trajet total   : ${m2h(totTraj)}\n`;
+  body += `Temps total             : ${m2h(totAct + totTraj)}\n`;
+  body += `\n${'─'.repeat(40)}\n`;
+  body += `Breizh Facilities — Breizh Report\n`;
+
+  const subject = `Rapport semaine du ${m1} au ${m2} — Breizh Facilities`;
+  window.location.href = 'mailto:' + MAIL_TO
+    + '?subject=' + encodeURIComponent(subject)
+    + '&body=' + encodeURIComponent(body);
+}
 
 // ── MAIL ──
 function buildMailBody(rows, title) {
