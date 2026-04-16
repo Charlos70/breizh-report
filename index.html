@@ -197,7 +197,7 @@ body { font-family: var(--sf); background: var(--bg); color: var(--label); max-w
   <div style="padding:16px 20px 0">
     <button class="btn primary" onclick="sendTableauMail()">
       <svg fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/></svg>
-      Tableau récapitulatif (à imprimer)
+      Tableau récapitulatif (imprimer / partager)
     </button>
     <button class="btn secondary" style="margin-top:10px" onclick="sendMail('week')">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
@@ -616,7 +616,7 @@ function renderWeek() {
 
 function changeWeek(d) { curWeekOffset += d; renderWeek(); }
 
-// ── TABLEAU RÉCAP MAIL ──
+// ── TABLEAU RÉCAP IMPRIMABLE ──
 function sendTableauMail() {
   const { monday, sunday } = getWeekBounds(curWeekOffset);
   const list = data.filter(i => {
@@ -631,66 +631,126 @@ function sendTableauMail() {
   const m2 = sunday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
   const DAYS_FR = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
 
-  const sorted = list.sort((a, b) => a.date.localeCompare(b.date) || (a.arr||'').localeCompare(b.arr||''));
-
-  // Grouper par date
+  const sorted = list.sort((a,b) => a.date.localeCompare(b.date) || (a.arr||'').localeCompare(b.arr||''));
   const grp = {};
-  sorted.forEach(i => { if (!grp[i.date]) grp[i.date] = []; grp[i.date].push(i); });
+  sorted.forEach(i => { if (!grp[i.date]) grp[i.date]=[]; grp[i.date].push(i); });
 
   let totAct = 0, totTraj = 0;
-
-  // Construire les lignes du tableau en texte (compatible mail)
-  // On utilise un format texte structuré lisible et imprimable
-  const SEP  = '+------------+--------+------------------------------------------+----------+----------+----------+----------+';
-  const HEAD = '| Jour       | Date   | Type d\'intervention                      | Arrivée  | Départ   | Activité | Trajet   |';
-
-  let body = `RAPPORT HEBDOMADAIRE — BREIZH FACILITIES\n`;
-  body += `Semaine du ${m1} au ${m2}\n`;
-  body += `${'='.repeat(73)}\n\n`;
-  body += SEP + '\n';
-  body += HEAD + '\n';
-  body += SEP + '\n';
+  let lignes = '';
 
   Object.keys(grp).sort((a,b) => a.localeCompare(b)).forEach(d => {
     const parts = d.split('-').map(Number);
     const dd = new Date(parts[0], parts[1]-1, parts[2]);
-    const dayName = DAYS_FR[dd.getDay()];
-    const dateShort = dd.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
-    const dayRows = grp[d].sort((a,b) => (a.arr||'').localeCompare(b.arr||''));
+    const dayLabel = DAYS_FR[dd.getDay()] + ' ' + dd.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const dayRows = grp[d];
+    const nbRows = dayRows.length;
+    let dayAct = 0, dayTraj = 0;
 
     dayRows.forEach((i, idx) => {
-      // Tronquer le type si trop long pour le tableau
-      const type = i.type.length > 40 ? i.type.substring(0, 38) + '..' : i.type;
-      const arr = i.arr || '—     ';
-      const dep = i.dep || '—     ';
-      const act = m2h(i.act||0).padStart(6);
-      const traj = i.traj > 0 ? m2h(i.traj).padStart(6) : '     —';
-      const jour = idx === 0 ? dayName.padEnd(10) : '          ';
-      const date = idx === 0 ? dateShort.padEnd(6) : '      ';
-      totAct += i.act || 0;
+      totAct  += i.act  || 0;
       totTraj += i.traj || 0;
-      body += `| ${jour} | ${date} | ${type.padEnd(40)} | ${arr.padEnd(8)} | ${dep.padEnd(8)} | ${act} h  | ${traj} h  |\n`;
+      dayAct  += i.act  || 0;
+      dayTraj += i.traj || 0;
+      const arr  = i.arr  || '—';
+      const dep  = i.dep  || '—';
+      const act  = m2h(i.act  || 0);
+      const traj = i.traj > 0 ? m2h(i.traj) : '—';
+      const tot  = m2h((i.act||0) + (i.traj||0));
+
+      lignes += `<tr>`;
+      if (idx === 0) {
+        lignes += `<td rowspan="${nbRows}" style="background:#f0f4ff;font-weight:700;text-align:center;vertical-align:middle;white-space:nowrap;border-right:2px solid #c0cce8;">${dayLabel}</td>`;
+      }
+      lignes += `
+        <td>${i.type}</td>
+        <td style="text-align:center;white-space:nowrap;">${arr}</td>
+        <td style="text-align:center;white-space:nowrap;">${dep}</td>
+        <td style="text-align:center;font-weight:600;color:#007aff;">${act}</td>
+        <td style="text-align:center;color:#555;">${traj}</td>
+        <td style="text-align:center;font-weight:700;">${tot}</td>
+      </tr>`;
       if (i.notes) {
-        body += `|            |        |  → Note: ${i.notes.substring(0,55).padEnd(55)}|\n`;
+        lignes += `<tr><td colspan="6" style="font-size:11px;color:#666;padding:2px 8px 6px;font-style:italic;">💬 ${i.notes}</td></tr>`;
       }
     });
-    body += SEP + '\n';
+
+    // Sous-total journée
+    lignes += `<tr style="background:#e8f0fe;font-size:12px;">
+      <td colspan="4" style="text-align:right;font-weight:600;color:#444;padding:5px 8px;">Total ${dayLabel} :</td>
+      <td style="text-align:center;font-weight:700;color:#007aff;">${m2h(dayAct)}</td>
+      <td style="text-align:center;color:#555;">${dayTraj>0?m2h(dayTraj):'—'}</td>
+      <td style="text-align:center;font-weight:700;">${m2h(dayAct+dayTraj)}</td>
+    </tr>`;
   });
 
-  body += `\n`;
-  body += `TOTAUX\n`;
-  body += `${'─'.repeat(40)}\n`;
-  body += `Nombre d'interventions : ${sorted.length}\n`;
-  body += `Temps d'activité total  : ${m2h(totAct)}\n`;
-  body += `Temps de trajet total   : ${m2h(totTraj)}\n`;
-  body += `Temps total             : ${m2h(totAct + totTraj)}\n`;
-  body += `\n${'─'.repeat(40)}\n`;
-  body += `Breizh Facilities — Breizh Report\n`;
+  const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Rapport semaine du ${m1} au ${m2}</title>
+<style>
+  @page { size: A4 landscape; margin: 15mm; }
+  body { font-family: Arial, sans-serif; font-size: 13px; color: #1a1a1e; margin: 0; padding: 20px; }
+  h1 { font-size: 18px; margin: 0 0 4px; color: #003380; }
+  .subtitle { font-size: 13px; color: #555; margin-bottom: 18px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+  th { background: #003380; color: white; padding: 9px 10px; text-align: left; font-size: 12px; white-space: nowrap; }
+  td { padding: 7px 10px; border-bottom: 1px solid #dde3f0; vertical-align: middle; font-size: 12px; }
+  tr:hover td { background: #f7f9ff; }
+  .totaux { display: flex; gap: 24px; margin-top: 10px; }
+  .kpi { background: #f0f4ff; border-radius: 8px; padding: 12px 20px; text-align: center; }
+  .kpi-val { font-size: 22px; font-weight: 700; color: #003380; }
+  .kpi-lbl { font-size: 11px; color: #555; margin-top: 2px; }
+  .footer { margin-top: 20px; font-size: 11px; color: #999; border-top: 1px solid #ddd; padding-top: 8px; display: flex; justify-content: space-between; }
+  @media print {
+    body { padding: 0; }
+    button { display: none !important; }
+  }
+</style>
+</head>
+<body>
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;">
+    <div>
+      <h1>Rapport hebdomadaire — Breizh Facilities</h1>
+      <div class="subtitle">Semaine du ${m1} au ${m2} &nbsp;·&nbsp; ${sorted.length} intervention${sorted.length>1?'s':''}</div>
+    </div>
+    <button onclick="window.print()" style="background:#003380;color:white;border:none;padding:10px 20px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">🖨️ Imprimer</button>
+  </div>
 
-  const subject = `Rapport semaine du ${m1} au ${m2} — Breizh Facilities`;
-  window.location.href = 'mailto:' + MAIL_TO
-    + '?subject=' + encodeURIComponent(subject)
-    + '&body=' + encodeURIComponent(body);
+  <table>
+    <thead>
+      <tr>
+        <th style="width:110px;">Jour</th>
+        <th>Type d'intervention</th>
+        <th style="width:75px;text-align:center;">Arrivée</th>
+        <th style="width:75px;text-align:center;">Départ</th>
+        <th style="width:80px;text-align:center;">Activité</th>
+        <th style="width:70px;text-align:center;">Trajet</th>
+        <th style="width:70px;text-align:center;">Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${lignes}
+    </tbody>
+  </table>
+
+  <div class="totaux">
+    <div class="kpi"><div class="kpi-val">${sorted.length}</div><div class="kpi-lbl">Interventions</div></div>
+    <div class="kpi"><div class="kpi-val">${m2h(totAct)}</div><div class="kpi-lbl">Temps activité</div></div>
+    <div class="kpi"><div class="kpi-val">${m2h(totTraj)}</div><div class="kpi-lbl">Temps trajet</div></div>
+    <div class="kpi"><div class="kpi-val">${m2h(totAct+totTraj)}</div><div class="kpi-lbl">Temps total</div></div>
+  </div>
+
+  <div class="footer">
+    <span>Breizh Report — généré le ${new Date().toLocaleDateString('fr-FR', {weekday:'long',day:'numeric',month:'long',year:'numeric'})}</span>
+    <span>Semaine du ${m1} au ${m2}</span>
+  </div>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
 }
 
 // ── MAIL ──
